@@ -1,0 +1,28 @@
+---
+# ============================================================
+# group_vars/all.yml — shared variables for all court servers
+# ============================================================
+
+# Application identity
+app_name: court-hearing-reminder
+app_dir: /opt/court-hearing-reminder
+
+# Docker image tag to deploy
+image_tag: "1.0.0"
+docker_hub_username: "yourdockerhubusername"   # override with -e docker_hub_username=xxx
+
+# Database configuration (override via vault or -e flags — never commit real passwords)
+db_root_password: "rootpassword_CHANGE_ME"
+db_name: "courtdb"
+db_username: "courtuser"
+db_password: "courtpass_CHANGE_ME"
+
+# JWT secret (must be ≥32 chars, change in production)
+jwt_secret: "CHANGE_ME_a_very_long_jwt_secret_256bits_minimum!!"
+
+# Ports exposed on host
+frontend_port: 80
+backend_port: 8080
+
+# Docker Compose version
+compose_version: "v2.24.0"
