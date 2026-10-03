@@ -1,0 +1,46 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+!.mvn/wrapper/maven-wrapper.properties
+.classpath
+.project
+.settings/
+*.iml
+.idea/
+
+# Node / React
+node_modules/
+dist/
+.npm
+frontend/.env
+frontend/.env.local
+
+# Environment secrets - NEVER commit
+.env
+*.env
+!.env.example
+
+# Docker
+docker/*.log
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test artifacts
+surefire-reports/
+failsafe-reports/
+screenshots/
+selenium-screenshots/
+
+# Build artifacts
+*.tmp
