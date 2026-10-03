@@ -604,12 +604,7 @@ tbody td:first-child { color: var(--text-primary); font-weight: 500; }
   margin-bottom: 2rem;
 }
 
-/* CSS vars for stat card colours */
---accent-blue: #3b82f6;
---accent-purple: #8b5cf6;
---accent-red: #ef4444;
---accent-amber: #f59e0b;
---accent-green: #10b981;
+/* (accent color vars are defined in :root above) */
 
 /* ---- Form card (Add/Edit hearing) ---- */
 .form-card {
