@@ -2,7 +2,7 @@
 
 > **Academic DevOps Project** — A fully working court hearing management system built with a complete DevOps pipeline.
 
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![CI](https://github.com/Aditiii121/court-hearing-reminder/actions/workflows/ci.yml/badge.svg)](https://github.com/Aditiii121/court-hearing-reminder/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/docker-multi--stage-blue)]()
 [![Java](https://img.shields.io/badge/java-17-orange)]()
 [![React](https://img.shields.io/badge/react-19-61dafb)]()
@@ -14,7 +14,8 @@
 The **Automated Court Hearing Reminder Portal** is a monolithic full-stack web application that allows court staff to manage hearing schedules and automatically generates reminders for upcoming hearings.
 
 ### Key Features
-- **JWT Authentication** — role-based access (Admin, Lawyer, Clerk)
+- **JWT Authentication** — role-based access (Admin, Lawyer, Clerk, **Client**)
+- **Client Portal** — self-service dashboard for clients to view their own hearings and reminders
 - **Hearing CRUD** — create, view, edit, delete with status workflow
 - **Status Transitions** — SCHEDULED → PENDING → IN_PROGRESS → COMPLETED/ADJOURNED/CANCELLED
 - **Automated Reminders** — scheduled job (hourly) flags hearings within 24h and 7 days
@@ -129,7 +130,9 @@ court-hearing-reminder/
 ```powershell
 docker run --rm -v "${PWD}/backend:/app" -w /app maven:3.9.6-eclipse-temurin-17 mvn test
 ```
-17 tests: HearingService (10), ReminderService (3), DashboardService (1), AuthController (3)
+32 tests: ClientController (15), HearingService (10), AuthController (3), ReminderService (3), DashboardService (1)
+
+**Or via GitHub Actions** (no local Java needed) — see the Actions tab.
 
 ### Selenium E2E Tests
 > Requires: running app + Chrome browser + Maven installed
