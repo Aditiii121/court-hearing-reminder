@@ -21,8 +21,12 @@ frontend/.env.local
 
 # Environment secrets - NEVER commit
 .env
-*.env
+.env.*
 !.env.example
+!.env.*.example
+docker/.env
+docker/.env.*
+!docker/.env.example
 
 # Docker
 docker/*.log
@@ -44,3 +48,10 @@ selenium-screenshots/
 
 # Build artifacts
 *.tmp
+
+# Jenkins
+jenkins-cli.jar
+
+# IDE
+.vscode/
+*.code-workspace
