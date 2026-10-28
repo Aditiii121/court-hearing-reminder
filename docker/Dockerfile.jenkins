@@ -1,0 +1,32 @@
+# =============================================================================
+# Dockerfile.jenkins — Multi-Stage Reproducible Jenkins Controller
+# Based on official jenkins/jenkins:lts-jdk17 with Maven 3.9, Node 20, and Docker CLI
+# =============================================================================
+FROM maven:3.9.6-eclipse-temurin-17 AS maven-provider
+FROM node:20-bookworm-slim AS node-provider
+FROM docker:26-cli AS docker-provider
+
+FROM jenkins/jenkins:lts-jdk17
+
+USER root
+
+# 1. Maven 3.9.6
+COPY --from=maven-provider /usr/share/maven /usr/share/maven
+RUN ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+
+# 2. Node.js 20 LTS & npm
+COPY --from=node-provider /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-provider /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+# 3. Docker CLI & Docker Compose plugin
+COPY --from=docker-provider /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker-provider /usr/local/libexec/docker/cli-plugins /usr/local/libexec/docker/cli-plugins
+RUN mkdir -p /usr/local/lib/docker/cli-plugins && \
+    ln -s /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose 2>/dev/null || true
+
+# 4. Global Git safe.directory to permit mounting the local repository
+RUN git config --system --add safe.directory '*'
+
+USER jenkins
