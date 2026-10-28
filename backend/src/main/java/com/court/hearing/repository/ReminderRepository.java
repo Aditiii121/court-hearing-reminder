@@ -23,4 +23,13 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     List<Reminder> findByReminderTypeWithHearing(@Param("type") ReminderType type);
 
     List<Reminder> findAllByOrderByCreatedAtDesc();
+
+    // ── Client-scoped reminder query ──────────────────────────────────────
+    @Query("""
+        SELECT r FROM Reminder r
+        JOIN FETCH r.hearing h
+        WHERE h.clientEmail = :clientEmail
+        ORDER BY h.hearingDate ASC, h.hearingTime ASC
+    """)
+    List<Reminder> findByHearingClientEmail(@Param("clientEmail") String clientEmail);
 }

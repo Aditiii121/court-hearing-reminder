@@ -9,12 +9,10 @@ const STATUSES = ['SCHEDULED', 'PENDING', 'IN_PROGRESS', 'ADJOURNED', 'COMPLETED
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const HEARING_TYPES = ['REGULAR', 'URGENT', 'APPEAL', 'BAIL', 'TRIAL', 'MOTION', 'SETTLEMENT'];
 
-function toLocalDatetime(isoString) {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  // Format for datetime-local input: YYYY-MM-DDTHH:mm
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Combine separate hearingDate (YYYY-MM-DD) and hearingTime (HH:mm) from API into datetime-local value
+function toLocalDatetime(date, time) {
+  if (!date) return '';
+  return time ? `${date}T${time.substring(0, 5)}` : `${date}T00:00`;
 }
 
 export default function EditHearing() {
@@ -28,21 +26,20 @@ export default function EditHearing() {
     hearingAPI.getById(id)
       .then((res) => {
         const h = res.data;
+        // Map backend field names → form state field names
         setForm({
-          caseNumber: h.caseNumber || '',
-          title: h.title || '',
-          description: h.description || '',
-          courtName: h.courtName || '',
-          courtRoom: h.courtRoom || '',
-          judgeName: h.judgeName || '',
-          petitionerName: h.petitionerName || '',
-          respondentName: h.respondentName || '',
-          lawyerName: h.lawyerName || '',
-          hearingDate: toLocalDatetime(h.hearingDate),
-          hearingType: h.hearingType || 'REGULAR',
-          status: h.status || 'SCHEDULED',
-          priority: h.priority || 'MEDIUM',
-          notes: h.notes || '',
+          caseNumber:    h.caseNumber    || '',
+          title:         h.caseTitle     || '',
+          description:   h.description   || '',
+          courtName:     h.courtName     || '',
+          judgeName:     h.judgeName     || '',
+          petitionerName: h.petitioner   || '',
+          respondentName: h.respondent   || '',
+          lawyerName:    h.assignedLawyer || '',
+          hearingDate:   toLocalDatetime(h.hearingDate, h.hearingTime),
+          hearingType:   h.caseType      || 'REGULAR',
+          status:        h.status        || 'SCHEDULED',
+          priority:      h.priority      || 'MEDIUM',
         });
       })
       .catch((err) => { toast.error(getErrorMessage(err)); navigate('/hearings'); })
@@ -58,7 +55,33 @@ export default function EditHearing() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await hearingAPI.update(id, form);
+      // Split datetime-local value into separate date and time for the backend
+      let hearingDate = '';
+      let hearingTime = null;
+      if (form.hearingDate) {
+        const [datePart, timePart] = form.hearingDate.split('T');
+        hearingDate = datePart;
+        hearingTime = timePart || null;
+      }
+
+      // Map form field names → backend DTO field names
+      const payload = {
+        caseNumber:     form.caseNumber,
+        caseTitle:      form.title,
+        courtName:      form.courtName,
+        judgeName:      form.judgeName,
+        petitioner:     form.petitionerName,
+        respondent:     form.respondentName,
+        assignedLawyer: form.lawyerName,
+        caseType:       form.hearingType,
+        hearingDate,
+        hearingTime,
+        status:         form.status,
+        priority:       form.priority,
+        description:    form.description,
+      };
+
+      await hearingAPI.update(id, payload);
       toast.success('Hearing updated!');
       navigate(`/hearings/${id}`);
     } catch (err) {

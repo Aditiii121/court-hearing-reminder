@@ -29,7 +29,33 @@ export default function AddHearing() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await hearingAPI.create(form);
+      // Split datetime-local value into separate date and time for the backend
+      let hearingDate = '';
+      let hearingTime = null;
+      if (form.hearingDate) {
+        const [datePart, timePart] = form.hearingDate.split('T');
+        hearingDate = datePart;       // e.g. "2024-06-15"
+        hearingTime = timePart || null; // e.g. "10:30"
+      }
+
+      // Map frontend form fields → backend DTO field names
+      const payload = {
+        caseNumber:    form.caseNumber,
+        caseTitle:     form.title,
+        courtName:     form.courtName,
+        judgeName:     form.judgeName,
+        petitioner:    form.petitionerName,
+        respondent:    form.respondentName,
+        assignedLawyer: form.lawyerName,
+        caseType:      form.hearingType,
+        hearingDate,
+        hearingTime,
+        status:        form.status,
+        priority:      form.priority,
+        description:   form.description,
+      };
+
+      await hearingAPI.create(payload);
       toast.success('Hearing created successfully!');
       navigate('/hearings');
     } catch (err) {

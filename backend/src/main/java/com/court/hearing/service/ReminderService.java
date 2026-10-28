@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -33,8 +34,8 @@ public class ReminderService {
         log.info("Running reminder job at {}", LocalDateTime.now());
 
         // Within 24 hours (today and tomorrow)
-        List<Hearing> within24h = hearingRepository.findByHearingDateBetweenAndStatusNot(
-                today, tomorrow, Hearing.Status.CANCELLED);
+        List<Hearing> within24h = new ArrayList<>(hearingRepository.findByHearingDateBetweenAndStatusNot(
+                today, tomorrow, Hearing.Status.CANCELLED));
         within24h.addAll(hearingRepository.findByHearingDateAndStatusNot(
                 today, Hearing.Status.COMPLETED));
 
@@ -87,6 +88,14 @@ public class ReminderService {
     @Transactional(readOnly = true)
     public List<ReminderResponse> getRemindersByType(ReminderType type) {
         return reminderRepository.findByReminderTypeWithHearing(type)
+                .stream()
+                .map(ReminderResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReminderResponse> getClientReminders(String clientEmail) {
+        return reminderRepository.findByHearingClientEmail(clientEmail)
                 .stream()
                 .map(ReminderResponse::from)
                 .toList();

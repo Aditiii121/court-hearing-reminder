@@ -56,4 +56,13 @@ export const healthAPI = {
   check: () => api.get('/health'),
 };
 
+// Client-specific API — all endpoints are scoped to the authenticated user server-side
+export const clientAPI = {
+  getDashboard: () => api.get('/client/dashboard'),
+  getMyHearings: (params) => api.get('/client/hearings', { params }),
+  getMyHearingById: (id) => api.get(`/client/hearings/${id}`),
+  getMyUpcomingHearings: () => api.get('/client/hearings/upcoming'),
+  getMyReminders: () => api.get('/client/reminders'),
+};
+
 export default api;

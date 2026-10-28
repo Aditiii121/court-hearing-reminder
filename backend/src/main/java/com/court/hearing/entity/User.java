@@ -70,6 +70,6 @@ public class User implements UserDetails {
     public boolean isEnabled() { return enabled; }
 
     public enum Role {
-        ADMIN, LAWYER, CLERK
+        ADMIN, LAWYER, CLERK, CLIENT
     }
 }

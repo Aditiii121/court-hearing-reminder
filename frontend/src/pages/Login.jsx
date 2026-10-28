@@ -16,8 +16,13 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const userData = await login(email, password);
+      // Route clients to their own portal; all other roles go to the main dashboard
+      if (userData.role === 'CLIENT') {
+        navigate('/client/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -87,7 +92,8 @@ export default function Login() {
           <p><strong>Demo credentials:</strong></p>
           <code>admin@example.com / Admin@123</code><br />
           <code>lawyer@example.com / Lawyer@123</code><br />
-          <code>clerk@example.com / Clerk@123</code>
+          <code>clerk@example.com / Clerk@123</code><br />
+          <code>client@example.com / Client@123</code>
         </div>
       </div>
     </div>

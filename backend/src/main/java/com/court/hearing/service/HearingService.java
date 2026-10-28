@@ -153,6 +153,28 @@ public class HearingService {
                 .stream().map(HearingResponse::from).toList();
     }
 
+    // ── Client-scoped methods ─────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Page<HearingResponse> getClientHearings(String clientEmail, Pageable pageable) {
+        return hearingRepository.findByClientEmail(clientEmail, pageable).map(HearingResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public HearingResponse getClientHearingById(Long id, String clientEmail) {
+        Hearing hearing = hearingRepository.findByIdAndClientEmail(id, clientEmail)
+                .orElseThrow(() -> new NotFoundException("Hearing not found or not authorized for this client"));
+        return HearingResponse.from(hearing);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HearingResponse> getClientUpcomingHearings(String clientEmail) {
+        return hearingRepository.findUpcomingHearingsForClient(clientEmail, LocalDate.now())
+                .stream().map(HearingResponse::from).toList();
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
     private Hearing findById(Long id) {
         return hearingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Hearing not found with id: " + id));

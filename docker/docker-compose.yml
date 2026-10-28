@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ------------------------------------------------------------------ MySQL
   mysql:
@@ -11,8 +9,6 @@ services:
       MYSQL_DATABASE: ${DB_NAME:-courtdb}
       MYSQL_USER: ${DB_USERNAME:-courtuser}
       MYSQL_PASSWORD: ${DB_PASSWORD:-courtpass}
-    ports:
-      - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -68,7 +64,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/nginx-health"]
       interval: 15s
       timeout: 5s
       retries: 3

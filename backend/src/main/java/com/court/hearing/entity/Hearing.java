@@ -68,6 +68,10 @@ public class Hearing {
 
     private String updatedBy;
 
+    // Nullable: only set when this hearing is explicitly linked to a client account
+    @Column(name = "client_email")
+    private String clientEmail;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -1,177 +1,198 @@
-// ============================================================
-// Jenkinsfile — Court Hearing Reminder Portal
-// Declarative Pipeline
-// ============================================================
+// =============================================================================
+// Jenkinsfile — Automated Court Hearing Reminder Portal
+// Declarative CI Pipeline with Visible Test Reports
+// =============================================================================
 pipeline {
     agent any
 
     parameters {
-        string(name: 'IMAGE_TAG',    defaultValue: '1.0.0', description: 'Docker image tag to build/push')
-        booleanParam(name: 'PUSH_IMAGE', defaultValue: false, description: 'Push images to Docker Hub?')
-        booleanParam(name: 'DEPLOY',     defaultValue: false, description: 'Deploy after build?')
-        string(name: 'APP_URL', defaultValue: 'http://localhost', description: 'Application base URL for Selenium tests')
+        string(name: 'IMAGE_TAG', defaultValue: '1.0.0', description: 'Docker image tag')
+        booleanParam(name: 'BUILD_DOCKER', defaultValue: true, description: 'Build Docker images using Docker Compose?')
     }
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials')   // Jenkins credential ID
-        DOCKER_HUB_USERNAME    = "${DOCKER_HUB_CREDENTIALS_USR}"
-        BACKEND_IMAGE          = "${DOCKER_HUB_USERNAME}/court-backend:${params.IMAGE_TAG}"
-        FRONTEND_IMAGE         = "${DOCKER_HUB_USERNAME}/court-frontend:${params.IMAGE_TAG}"
-        COMPOSE_FILE           = "docker/docker-compose.yml"
+        COMPOSE_FILE = 'docker/docker-compose.yml'
     }
 
     options {
-        timeout(time: 60, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '15'))
         disableConcurrentBuilds()
     }
 
     stages {
-        // ── Stage 1: Checkout ───────────────────────────────────
+        // ── Stage 1: Checkout ────────────────────────────────────────────────
         stage('Checkout') {
             steps {
+                echo "==> Stage 1: Checkout Source Code"
                 checkout scm
-                sh 'git log --oneline -5'
-                echo "Branch: ${env.BRANCH_NAME ?: 'unknown'}"
+                script {
+                    if (isUnix()) {
+                        sh 'git log -1 --oneline || true'
+                    } else {
+                        bat 'git log -1 --oneline || ver'
+                    }
+                }
             }
         }
 
-        // ── Stage 2: Backend Build (Docker multi-stage) ─────────
+        // ── Stage 2: Validate ────────────────────────────────────────────────
+        stage('Validate') {
+            steps {
+                echo "==> Stage 2: Validate Environment & Project Files"
+                script {
+                    if (isUnix()) {
+                        sh '''
+                            echo "=== Validating Required Project Files ==="
+                            test -f backend/pom.xml || { echo "ERROR: backend/pom.xml missing"; exit 1; }
+                            test -f frontend/package.json || { echo "ERROR: frontend/package.json missing"; exit 1; }
+                            test -f docker/docker-compose.yml || { echo "ERROR: docker/docker-compose.yml missing"; exit 1; }
+                            echo "All core project files verified."
+
+                            echo "=== Tool Environment ==="
+                            java -version 2>&1 || true
+                            mvn -version 2>&1 || true
+                            node -v 2>&1 || true
+                            npm -v 2>&1 || true
+                            docker --version 2>&1 || true
+                        '''
+                    } else {
+                        bat '''
+                            echo "=== Validating Required Project Files ==="
+                            if not exist backend\\pom.xml (echo ERROR: backend\\pom.xml missing & exit /b 1)
+                            if not exist frontend\\package.json (echo ERROR: frontend\\package.json missing & exit /b 1)
+                            if not exist docker\\docker-compose.yml (echo ERROR: docker\\docker-compose.yml missing & exit /b 1)
+                            echo All core project files verified.
+
+                            echo "=== Tool Environment ==="
+                            java -version
+                            mvn -version
+                            node -v
+                            npm -v
+                            docker --version
+                        '''
+                    }
+                }
+            }
+        }
+
+        // ── Stage 3: Backend Build ───────────────────────────────────────────
         stage('Backend Build') {
             steps {
-                sh """
-                    echo "==> Building backend Docker image: ${BACKEND_IMAGE}"
-                    docker build -t ${BACKEND_IMAGE} ./backend
-                    docker tag ${BACKEND_IMAGE} local/court-backend:latest
-                """
-            }
-        }
-
-        // ── Stage 3: Unit Tests (run inside backend image) ──────
-        stage('Unit Tests') {
-            steps {
-                sh """
-                    echo "==> Running unit tests inside builder stage"
-                    docker run --rm \\
-                        --entrypoint mvn \\
-                        maven:3.9.6-eclipse-temurin-17 \\
-                        -v \$(pwd)/backend:/app \\
-                        -w /app \\
-                        test -Dspring.datasource.url=jdbc:h2:mem:testdb -Dspring.datasource.driver-class-name=org.h2.Driver || true
-                """
-                // Alternative: extract test results from build
-                junit testResults: 'backend/target/surefire-reports/*.xml', allowEmptyResults: true
-            }
-            post {
-                always {
-                    junit testResults: 'backend/target/surefire-reports/*.xml', allowEmptyResults: true
+                echo "==> Stage 3: Compile Spring Boot Backend (Java 17 + Maven)"
+                dir('backend') {
+                    script {
+                        if (isUnix()) {
+                            sh 'mvn clean compile -B -DskipTests'
+                        } else {
+                            bat 'mvn clean compile -B -DskipTests'
+                        }
+                    }
                 }
             }
         }
 
-        // ── Stage 4: Frontend Build ─────────────────────────────
+        // ── Stage 4: Backend Tests ───────────────────────────────────────────
+        stage('Backend Tests') {
+            steps {
+                echo "==> Stage 4: Execute Backend Unit & Integration Tests (JUnit 5)"
+                dir('backend') {
+                    script {
+                        // Failures must NOT be swallowed — pipeline fails if tests fail
+                        if (isUnix()) {
+                            sh 'mvn test -B'
+                        } else {
+                            bat 'mvn test -B'
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Stage 5: Frontend Install ────────────────────────────────────────
+        stage('Frontend Install') {
+            steps {
+                echo "==> Stage 5: Install Frontend Dependencies (Lockfile Reproducible)"
+                dir('frontend') {
+                    script {
+                        if (isUnix()) {
+                            sh 'npm ci || npm install --prefer-offline'
+                        } else {
+                            bat 'npm ci || npm install --prefer-offline'
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Stage 6: Frontend Tests ──────────────────────────────────────────
+        stage('Frontend Tests') {
+            steps {
+                echo "==> Stage 6: Execute Frontend Test Suite (Generating JUnit XML)"
+                dir('frontend') {
+                    script {
+                        if (isUnix()) {
+                            sh 'npm test'
+                        } else {
+                            bat 'npm test'
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Stage 7: Frontend Build ──────────────────────────────────────────
         stage('Frontend Build') {
             steps {
-                sh """
-                    echo "==> Building frontend Docker image: ${FRONTEND_IMAGE}"
-                    docker build -t ${FRONTEND_IMAGE} ./frontend
-                    docker tag ${FRONTEND_IMAGE} local/court-frontend:latest
-                """
-            }
-        }
-
-        // ── Stage 5: Docker Compose Up (integration env) ────────
-        stage('Start Integration Environment') {
-            when {
-                expression { params.DEPLOY || currentBuild.result == null }
-            }
-            steps {
-                sh """
-                    cp .env.example .env 2>/dev/null || true
-                    IMAGE_TAG=${params.IMAGE_TAG} \\
-                    DOCKER_HUB_USERNAME=${DOCKER_HUB_USERNAME} \\
-                    docker compose -f ${COMPOSE_FILE} up -d --no-build
-                    echo "==> Waiting for services..."
-                    sleep 30
-                """
-            }
-        }
-
-        // ── Stage 6: Selenium Tests ─────────────────────────────
-        stage('Selenium Tests') {
-            steps {
-                sh """
-                    echo "==> Running Selenium integration tests..."
-                    cd tests/selenium
-                    mvn verify -Pselenium \\
-                        -Dapp.base.url=${params.APP_URL} \\
-                        -Dfailsafe.rerunFailingTestsCount=1 || true
-                """
-            }
-            post {
-                always {
-                    junit testResults: 'tests/selenium/target/failsafe-reports/*.xml',
-                          allowEmptyResults: true
-                    archiveArtifacts artifacts: 'tests/selenium/target/screenshots/**/*.png',
-                                     allowEmptyArchive: true
+                echo "==> Stage 7: Build Production Frontend Assets (Vite)"
+                dir('frontend') {
+                    script {
+                        if (isUnix()) {
+                            sh 'npm run build'
+                        } else {
+                            bat 'npm run build'
+                        }
+                    }
                 }
             }
         }
 
-        // ── Stage 7: Docker Push ────────────────────────────────
-        stage('Docker Push') {
-            when { expression { params.PUSH_IMAGE } }
-            steps {
-                sh """
-                    echo "${DOCKER_HUB_CREDENTIALS_PSW}" | docker login -u "${DOCKER_HUB_CREDENTIALS_USR}" --password-stdin
-                    docker push ${BACKEND_IMAGE}
-                    docker push ${FRONTEND_IMAGE}
-                    # Also tag and push latest
-                    docker tag ${BACKEND_IMAGE}  ${DOCKER_HUB_USERNAME}/court-backend:latest
-                    docker tag ${FRONTEND_IMAGE} ${DOCKER_HUB_USERNAME}/court-frontend:latest
-                    docker push ${DOCKER_HUB_USERNAME}/court-backend:latest
-                    docker push ${DOCKER_HUB_USERNAME}/court-frontend:latest
-                    docker logout
-                """
+        // ── Stage 8: Docker Build ────────────────────────────────────────────
+        stage('Docker Build') {
+            when {
+                expression { params.BUILD_DOCKER }
             }
-        }
-
-        // ── Stage 8: Deploy ─────────────────────────────────────
-        stage('Deploy') {
-            when { expression { params.DEPLOY } }
             steps {
-                sh """
-                    chmod +x scripts/deploy.sh scripts/healthcheck.sh
-                    HEALTH_URL=${params.APP_URL}/api/health \\
-                    ./scripts/deploy.sh ${params.IMAGE_TAG}
-                """
-            }
-        }
-
-        // ── Stage 9: Health Check ───────────────────────────────
-        stage('Health Check') {
-            when { expression { params.DEPLOY } }
-            steps {
-                sh """
-                    chmod +x scripts/healthcheck.sh
-                    ./scripts/healthcheck.sh ${params.APP_URL}/api/health 20 5
-                """
+                echo "==> Stage 8: Build Frontend & Backend Images with Docker Compose"
+                script {
+                    if (isUnix()) {
+                        sh 'docker compose -f ${COMPOSE_FILE} build'
+                    } else {
+                        bat 'docker compose -f %COMPOSE_FILE% build'
+                    }
+                }
             }
         }
     }
 
+    // ── Test Reports & Artifact Archival ─────────────────────────────────────
     post {
+        always {
+            echo "==> Publishing Visible Automated Test Reports in Jenkins"
+            // Visible JUnit XML report generation for Jenkins UI Test Result Trend
+            junit testResults: 'backend/target/surefire-reports/TEST-*.xml,frontend/test-results/*.xml',
+                  allowEmptyResults: false
+
+            // Archive distributable artifacts
+            archiveArtifacts artifacts: 'backend/target/*.jar,frontend/dist/**',
+                             allowEmptyArchive: true,
+                             fingerprint: true
+        }
         success {
-            echo "✅ Pipeline succeeded: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+            echo "SUCCESS: Pipeline completed with all tests passing!"
         }
         failure {
-            echo "❌ Pipeline FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-        }
-        always {
-            // Tear down integration environment
-            sh """
-                docker compose -f ${COMPOSE_FILE} down --remove-orphans 2>/dev/null || true
-            """
+            echo "FAILURE: Build or tests failed. Inspect the Jenkins Test Results graph and stage logs for root cause."
         }
     }
 }

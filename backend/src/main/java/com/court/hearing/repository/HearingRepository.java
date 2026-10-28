@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface HearingRepository extends JpaRepository<Hearing, Long> {
@@ -61,4 +62,32 @@ public interface HearingRepository extends JpaRepository<Hearing, Long> {
 
     @Query("SELECT h FROM Hearing h WHERE h.hearingDate BETWEEN :from AND :to AND h.status NOT IN ('COMPLETED','CANCELLED') ORDER BY h.hearingDate, h.hearingTime")
     List<Hearing> findUpcomingHearings(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    // ── Client-scoped queries ──────────────────────────────────────────────
+
+    Page<Hearing> findByClientEmail(String clientEmail, Pageable pageable);
+
+    Optional<Hearing> findByIdAndClientEmail(Long id, String clientEmail);
+
+    long countByClientEmail(String clientEmail);
+
+    long countByClientEmailAndStatus(String clientEmail, Status status);
+
+    @Query("""
+        SELECT h FROM Hearing h
+        WHERE h.clientEmail = :clientEmail
+          AND h.hearingDate >= :from
+          AND h.status NOT IN ('COMPLETED','CANCELLED')
+        ORDER BY h.hearingDate ASC, h.hearingTime ASC
+    """)
+    List<Hearing> findUpcomingHearingsForClient(@Param("clientEmail") String clientEmail,
+                                                 @Param("from") LocalDate from);
+
+    @Query("""
+        SELECT COUNT(h) FROM Hearing h
+        WHERE h.clientEmail = :clientEmail
+          AND h.hearingDate >= :from
+          AND h.status NOT IN ('COMPLETED','CANCELLED')
+    """)
+    long countUpcomingForClient(@Param("clientEmail") String clientEmail, @Param("from") LocalDate from);
 }

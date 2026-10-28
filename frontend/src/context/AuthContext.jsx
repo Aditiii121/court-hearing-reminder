@@ -40,12 +40,13 @@ export function AuthProvider({ children }) {
   const isAdmin = () => user?.role === 'ADMIN';
   const isLawyer = () => user?.role === 'LAWYER';
   const isClerk = () => user?.role === 'CLERK';
+  const isClient = () => user?.role === 'CLIENT';
   const canDelete = () => user?.role === 'ADMIN';
   const canEdit = () => ['ADMIN', 'LAWYER'].includes(user?.role);
   const canCreate = () => ['ADMIN', 'LAWYER', 'CLERK'].includes(user?.role);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isLawyer, isClerk, canDelete, canEdit, canCreate }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isLawyer, isClerk, isClient, canDelete, canEdit, canCreate }}>
       {children}
     </AuthContext.Provider>
   );

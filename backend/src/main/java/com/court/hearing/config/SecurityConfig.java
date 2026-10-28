@@ -3,8 +3,10 @@ package com.court.hearing.config;
 import com.court.hearing.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -17,6 +19,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -28,6 +31,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Import(AppConfig.class)
 public class SecurityConfig {
 
     // @Lazy breaks the cycle: SecurityConfig is created first,
@@ -51,13 +55,27 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
+
+                        // CLIENT role is blocked from write operations on shared hearing endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/hearings/**").hasAnyRole("ADMIN", "LAWYER", "CLERK")
+                        .requestMatchers(HttpMethod.PUT, "/api/hearings/**").hasAnyRole("ADMIN", "LAWYER")
                         .requestMatchers(HttpMethod.DELETE, "/api/hearings/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/hearings/**").hasAnyRole("ADMIN", "LAWYER", "CLERK")
+                        .requestMatchers(HttpMethod.POST, "/api/reminders/**").hasAnyRole("ADMIN", "LAWYER", "CLERK")
+
+                        // Client-specific API — only CLIENT role
+                        .requestMatchers("/api/client/**").hasRole("CLIENT")
+
+                        // All other authenticated endpoints
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
