@@ -5,10 +5,6 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'maven-3.9'
-        nodejs 'node-18' // Must match the name defined in Manage Jenkins -> Tools
-    }
 
     parameters {
         string(name: 'IMAGE_TAG', defaultValue: '1.0.0', description: 'Docker image tag')
@@ -121,6 +117,16 @@ pipeline {
                 dir('frontend') {
                     script {
                         if (isUnix()) {
+                            // Detect package manager and install libatomic dynamically
+                            sh '''
+                                if command -v apt-get >/dev/null; then
+                                    echo "Installing libatomic via apt..."
+                                    apt-get update && apt-get install -y libatomic1
+                                elif command -v apk >/dev/null; then
+                                    echo "Installing libatomic via apk..."
+                                    apk add --no-cache libatomic
+                                fi
+                            '''
                             sh 'npm ci || npm install --prefer-offline'
                         } else {
                             bat 'npm ci || npm install --prefer-offline'

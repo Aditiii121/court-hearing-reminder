@@ -20,6 +20,11 @@ COPY --from=node-provider /usr/local/lib/node_modules /usr/local/lib/node_module
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
+# Install libatomic1 required by the Node.js binary
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libatomic1 && \
+    rm -rf /var/lib/apt/lists/*
+
 # 3. Docker CLI & Docker Compose plugin
 COPY --from=docker-provider /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-provider /usr/local/libexec/docker/cli-plugins /usr/local/libexec/docker/cli-plugins
