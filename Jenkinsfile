@@ -120,17 +120,7 @@ pipeline {
                 echo "==> Stage 5: Install Frontend Dependencies (Lockfile Reproducible)"
                 dir('frontend') {
                     script {
-                        if (isUnix()) {
-                            // Detect package manager and install libatomic dynamically
-                            sh '''
-                                if command -v apt-get >/dev/null; then
-                                    echo "Installing libatomic via apt..."
-                                    apt-get update && apt-get install -y libatomic1
-                                elif command -v apk >/dev/null; then
-                                    echo "Installing libatomic via apk..."
-                                    apk add --no-cache libatomic
-                                fi
-                            '''
+                        if (isUnix()) {                             
                             sh 'npm ci || npm install --prefer-offline'
                         } else {
                             bat 'npm ci || npm install --prefer-offline'

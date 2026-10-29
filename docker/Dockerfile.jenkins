@@ -10,9 +10,13 @@ FROM jenkins/jenkins:lts-jdk17
 
 USER root
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libatomic1 && \
+    rm -rf /var/lib/apt/lists/*
+
 # 1. Maven 3.9.6
 COPY --from=maven-provider /usr/share/maven /usr/share/maven
-RUN ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+RUN ln -s / usr/share/maven/bin/mvn /usr/bin/mvn
 
 # 2. Node.js 20 LTS & npm
 COPY --from=node-provider /usr/local/bin/node /usr/local/bin/node
