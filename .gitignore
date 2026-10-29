@@ -52,6 +52,10 @@ selenium-screenshots/
 # Jenkins
 jenkins-cli.jar
 
+# Local Docker Compose overrides (machine-specific port mappings etc.)
+docker/docker-compose.override.yml
+docker-compose.override.yml
+
 # IDE
 .vscode/
 *.code-workspace

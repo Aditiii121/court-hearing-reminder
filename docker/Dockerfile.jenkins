@@ -16,7 +16,7 @@ RUN apt-get update && \
 
 # 1. Maven 3.9.6
 COPY --from=maven-provider /usr/share/maven /usr/share/maven
-RUN ln -s / usr/share/maven/bin/mvn /usr/bin/mvn
+RUN ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
 
 # 2. Node.js 20 LTS & npm
 COPY --from=node-provider /usr/local/bin/node /usr/local/bin/node
@@ -37,5 +37,8 @@ RUN mkdir -p /usr/local/lib/docker/cli-plugins && \
 
 # 4. Global Git safe.directory to permit mounting the local repository
 RUN git config --system --add safe.directory '*'
+
+# FIX: Add the jenkins user to the root group so it can access the mounted docker.sock
+RUN usermod -aG root jenkins
 
 USER jenkins
