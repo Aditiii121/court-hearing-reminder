@@ -5,6 +5,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'maven-3.9'
+        nodejs 'node-18' // Must match the name defined in Manage Jenkins -> Tools
+    }
 
     parameters {
         string(name: 'IMAGE_TAG', defaultValue: '1.0.0', description: 'Docker image tag')
